@@ -1,0 +1,86 @@
+resources:
+  - name: code-repo
+    type: git
+    source:
+      branch: main
+      uri: https://gitlab.com/oozie/example.git
+
+jobs:
+  - name: build
+    plan:
+    - get: code-repo
+      trigger: true
+    - task: build
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: alpine
+        params:
+          PACKAGE_NAME: mypackage
+        inputs:
+          - name: code-repo
+        run:
+          path: /bin/sh
+          args:
+          - -c
+          - |
+            set -e
+            cd code-repo
+              # do the building, e.g.
+              mkdir build
+              touch build/output
+            cd -
+
+
+
+  - name: test
+    plan:
+    - get: code-repo
+      trigger: true
+      passed: [ build ]
+    - task: build
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: alpine
+        params:
+          PACKAGE_NAME: mypackage
+        inputs:
+          - name: code-repo
+        outputs:
+          - name: tarball
+        run:
+          path: /bin/sh
+          args:
+          - -c
+          - |
+            exit 0
+
+  - name: deploy
+    plan:
+    - get: code-repo
+      passed: [ test ]
+    - task: deploy
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: alpine
+        params:
+          PACKAGE_NAME: mypackage
+        inputs:
+          - name: code-repo
+        outputs:
+          - name: tarball
+        run:
+          path: /bin/sh
+          args:
+          - -c
+          - |
+            exit 0
+
